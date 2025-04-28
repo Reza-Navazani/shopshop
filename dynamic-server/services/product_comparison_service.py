@@ -20,9 +20,9 @@ class ProductComparisonService:
         return self.current_products
 
     def _create_comparison_graph(self) -> Graph:
-        def extract_products(state: Dict) -> Dict:
+        def fetch_products(state: Dict) -> Dict:
             try:
-                logging.info(f"Extracting products from message: {state['user_message']}")
+                logging.info(f"Fetching products from message: {state['user_message']}")
                 raw_response = self.llm_service.fetch_response(state["user_message"])
                 
                 if "error" in raw_response:
@@ -37,82 +37,73 @@ class ProductComparisonService:
                 return {
                     "products": raw_response["products"],
                     "should_continue": True,
-                    "user_message": state["user_message"]
+                    "user_message": state["user_message"],
+                    "success": True
                 }
             except Exception as e:
-                logging.error(f"Error in extract_products: {str(e)}\n{traceback.format_exc()}")
+                logging.error(f"Error in fetch_products: {str(e)}\n{traceback.format_exc()}")
                 return {"error": str(e), "products": [], "should_continue": False}
 
-        def analyze_differences(state: Dict) -> Dict:
+        def mark_unhealthy_ingredients(state: Dict) -> Dict:
             try:
                 if not state.get("should_continue", False):
                     return state
                 
-                products = state["products"]
-                if len(products) < 2:
-                    return {**state, "error": "Not enough products to compare"}
-
-                for i in range(len(products)):
-                    for j in range(i + 1, len(products)):
-                        self._highlight_differences(products[i], products[j])
-
-                return {
-                    "products": products,
-                    "analysis_complete": True,
-                    "user_message": state["user_message"]
+                products = state.get("products", [])
+                
+                # Common unhealthy ingredients to check for
+                unhealthy_ingredients = {
+                    "high fructose corn syrup", "artificial sweetener", "artificial color",
+                    "msg", "monosodium glutamate", "trans fat", "hydrogenated",
+                    "artificial flavor", "sodium nitrite", "sodium nitrate",
+                    "food coloring", "corn syrup", "partially hydrogenated",
+                    "aspartame", "saccharin", "sucralose", "caramel color",
+                    "acesulfame potassium"
                 }
-            except Exception as e:
-                logging.error(f"Error in analyze_differences: {str(e)}\n{traceback.format_exc()}")
-                return {**state, "error": str(e)}
-
-        def format_response(state: Dict) -> Dict:
-            try:
-                if "error" in state:
-                    return {
-                        "success": False,
-                        "error": state["error"],
-                        "products": []
-                    }
-
+                
+                for product in products:
+                    if "ingredients" in product:
+                        ingredients_list = product["ingredients"].get("list", [])
+                        # Always create formatted array with text and unhealthy flag
+                        product["ingredients"]["formatted"] = []
+                        for ingredient in ingredients_list:
+                            is_unhealthy = any(unhealthy in ingredient.lower() for unhealthy in unhealthy_ingredients)
+                            product["ingredients"]["formatted"].append({
+                                "text": ingredient,
+                                "unhealthy": is_unhealthy
+                            })
+                        # Keep the unhealthy list for backwards compatibility
+                        product["ingredients"]["unhealthy"] = [
+                            ing["text"] for ing in product["ingredients"]["formatted"]
+                            if ing["unhealthy"]
+                        ]
+                
+                state["metadata"] = {"highlight_unhealthy": True}
+                
                 return {
                     "success": True,
-                    "products": state["products"],
-                    "query": state.get("user_message", ""),
-                    "analysis_complete": state.get("analysis_complete", False)
+                    "products": products,
+                    "metadata": state.get("metadata", {}),
+                    "query": state.get("user_message", "")
                 }
             except Exception as e:
-                logging.error(f"Error in format_response: {str(e)}\n{traceback.format_exc()}")
+                logging.error(f"Error in mark_unhealthy_ingredients: {str(e)}\n{traceback.format_exc()}")
                 return {"success": False, "error": str(e), "products": []}
 
         # Create the graph
         workflow = Graph()
         
-        # Add nodes
-        workflow.add_node("extract", extract_products)
-        workflow.add_node("analyze", analyze_differences)
-        workflow.add_node("format", format_response)
+        # Add just 2 nodes
+        workflow.add_node("fetch", fetch_products)
+        workflow.add_node("mark_unhealthy", mark_unhealthy_ingredients)
         
-        # Add edges
-        workflow.add_edge("extract", "analyze")
-        workflow.add_edge("analyze", "format")
+        # Connect the nodes
+        workflow.add_edge("fetch", "mark_unhealthy")
         
         # Set entry point
-        workflow.set_entry_point("extract")
+        workflow.set_entry_point("fetch")
         
-        # Compile with proper configuration
         return workflow.compile()
-
-    def _highlight_differences(self, product1: Dict, product2: Dict) -> None:
-        try:
-            for key in product1.keys():
-                if key in product2:
-                    val1 = str(product1[key])
-                    val2 = str(product2[key])
-                    if val1 != val2:
-                        product1[f"{key}_diff"] = True
-                        product2[f"{key}_diff"] = True
-        except Exception as e:
-            logging.error(f"Error highlighting differences: {str(e)}")
 
     def process_message(self, message: str) -> Dict:
         try:

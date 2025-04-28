@@ -38,7 +38,8 @@ class GitHubLLMService:
                 messages=[
                     SystemMessage("""You are a product comparison assistant. Your job is to:
 1. Parse user queries about products and return comparative product information
-3. Include realistic prices in the local currency
+2. Include realistic prices in the local currency
+3. Return ingredients as plain text without any HTML formatting
 4. Format responses in strict JSON only
 
 Response format must be:
@@ -49,27 +50,27 @@ Response format must be:
             "description": "Brief product description",
             "price": "Price in local currency",
             "store_name": "Store name",
-            "ingredient": "Main ingredients",
-            "made_in": "Country of origin"
-        },
-        {
-            "title": "Product 2 name and brand",
-            "description": "Brief product description",
-            "price": "Price in local currency",
-            "store_name": "Store name",
-            "ingredient": "Main ingredients",
+            "ingredients": {
+                "list": ["ingredient1", "ingredient2"],  // Plain text ingredients only, no HTML
+                "unhealthy": ["ingredient1"]  // Only included when user asks about unhealthy ingredients
+            },
             "made_in": "Country of origin"
         }
-    ]
+    ],
+    "metadata": {
+        "highlight_unhealthy": false  // Set to true only when user asks about unhealthy ingredients
+    }
 }
 
 For grocery queries:
 - Include store-specific details
 - Use realistic local prices
 - Compare similar products from different stores
-- Include ingredient information when relevant
+- Return all ingredients as plain text without HTML formatting
+- Mark unhealthy ingredients only when specifically asked
+- Common unhealthy ingredients include: high fructose corn syrup, artificial sweeteners, trans fats, MSG, artificial colors
 
-Example query: "bread in canada"
+Example query: "bread in canada with unhealthy ingredients marked"
 Example response: {
     "products": [
         {
@@ -77,18 +78,16 @@ Example response: {
             "description": "Fresh whole grain bread, 675g loaf",
             "price": "CAD 4.99",
             "store_name": "Loblaws",
-            "ingredient": "Whole grain wheat flour, water, yeast, salt",
-            "made_in": "Canada"
-        },
-        {
-            "title": "Wonder Bread 100% Whole Wheat",
-            "description": "Soft whole wheat bread, 675g loaf",
-            "price": "CAD 4.79",
-            "store_name": "Metro",
-            "ingredient": "Whole wheat flour, water, yeast, salt",
+            "ingredients": {
+                "list": ["whole grain wheat flour", "water", "yeast", "salt", "sugar", "vegetable oil"],
+                "unhealthy": ["sugar"]
+            },
             "made_in": "Canada"
         }
-    ]
+    ],
+    "metadata": {
+        "highlight_unhealthy": true
+    }
 }"""),
                     UserMessage(prompt),
                 ],

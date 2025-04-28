@@ -11,6 +11,27 @@ interface BoxGridProps {
 export const BoxGrid: React.FC<BoxGridProps> = ({ products, className, isAnalyzing }) => {
     const createMarkup = (content: string) => ({ __html: content });
 
+    const renderIngredients = (product: ProductResponse['products'][number]) => {
+        if (!product.ingredients) {
+            return '';
+        }
+
+        // Always use formatted ingredients when available
+        if (product.ingredients.formatted) {
+            return product.ingredients.formatted.map((ingredient, index) => (
+                <React.Fragment key={index}>
+                    <span className={ingredient.unhealthy ? 'text-red-500 font-semibold !text-red-500 inline-block' : 'text-gray-700'}>
+                        {ingredient.text}
+                    </span>
+                    {index < product.ingredients.formatted!.length - 1 && ', '}
+                </React.Fragment>
+            ));
+        }
+
+        // Fallback to simple list if formatted is not available
+        return product.ingredients.list.join(', ');
+    };
+
     if (products.length === 0) {
         return (
             <div className={`${className} flex justify-center items-center min-h-[200px]`}>
@@ -75,7 +96,7 @@ export const BoxGrid: React.FC<BoxGridProps> = ({ products, className, isAnalyzi
                                 <div>
                                     <span className="font-medium text-gray-600">Ingredients:</span>
                                     <p className="text-gray-700 mt-1">
-                                        <span dangerouslySetInnerHTML={createMarkup(product.ingredient)} />
+                                        {renderIngredients(product)}
                                     </p>
                                 </div>
                                 <div>
