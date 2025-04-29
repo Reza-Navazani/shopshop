@@ -4,6 +4,8 @@ This file serves as an alternative entry point for Azure deployments.
 """
 from main import app
 
-# This allows Azure to find the Flask app
+# This is the object that Azure App Service will look for
+app = app
+
 if __name__ == '__main__':
     app.run()
