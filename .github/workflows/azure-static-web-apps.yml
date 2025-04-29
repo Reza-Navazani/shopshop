@@ -28,7 +28,7 @@ jobs:
           api_location: "/dynamic-server"   # API source code path - change if your API is elsewhere
           output_location: "build"          # Built app content directory - should match Vite outDir
           app_build_command: "npm run build"
-          api_build_command: "pip install -r requirements.txt"
+          api_build_command: "cd /home/runner/work/*/*/dynamic-server && pip install -r requirements.txt"
           
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
