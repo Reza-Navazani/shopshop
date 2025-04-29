@@ -1,4 +1,0 @@
-[config]
-project = dynamic-server
-SCM_DO_BUILD_DURING_DEPLOYMENT=true
-command = bash startup.sh

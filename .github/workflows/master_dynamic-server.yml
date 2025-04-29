@@ -37,14 +37,15 @@ jobs:
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+        working-directory: ./dynamic-server # Change working directory to package only the server app
+        run: zip ../release.zip ./* -r # Zip contents relative to dynamic-server
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
           name: python-app
           path: |
-            release.zip
+            release.zip # Upload the zip file created in the root
             !venv/
 
   deploy:
@@ -62,11 +63,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: python-app
+          # No path needed, downloads to the default workspace directory
 
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
-
-      
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -98,7 +96,7 @@ jobs:
         with:
           app-name: 'dynamic-server'
           slot-name: 'Production'
-          package: '.'
+          package: 'release.zip' # Deploy the zip file directly
           respect-pom-xml: false
           timeout: 1800000  # 30 minutes timeout
 
