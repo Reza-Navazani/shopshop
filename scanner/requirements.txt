@@ -1,0 +1,11 @@
+opencv-python
+requests
+numpy
+ultralytics
+pyzbar==0.1.8
+Pillow
+Flask
+flask-cors
+
+
+pydantic==2.10.6
