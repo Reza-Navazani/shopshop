@@ -1,9 +1,12 @@
 from azure.ai.inference import ChatCompletionsClient
 from azure.ai.inference.models import SystemMessage, UserMessage
 from azure.core.credentials import AzureKeyCredential
+from azure.core.exceptions import HttpResponseError, ServiceRequestError, ServiceResponseError
 import json
 import logging
 import os
+import time
+import traceback
 
 class GitHubLLMService:
     def __init__(self, endpoint, token, model):
@@ -33,10 +36,14 @@ class GitHubLLMService:
 
             logging.info(f"Sending request to LLM service with prompt length: {len(prompt)}")
             logging.debug(f"Using endpoint: {self.endpoint}, model: {self.model}")
-
-            response = self.client.complete(
-                messages=[
-                    SystemMessage("""You are a product comparison assistant. Your job is to:
+            
+            # Add timestamp for timing the request
+            start_time = time.time()
+            
+            try:
+                response = self.client.complete(
+                    messages=[
+                        SystemMessage("""You are a product comparison assistant. Your job is to:
 1. Parse user queries about products and return comparative product information
 2. Include realistic prices in the local currency
 3. Return ingredients as plain text without any HTML formatting
@@ -89,14 +96,36 @@ Example response: {
         "highlight_unhealthy": true
     }
 }"""),
-                    UserMessage(prompt),
-                ],
-                temperature=0.7,
-                top_p=0.9,
-                model=self.model
-            )
-            
-            logging.info("Received response from LLM service")
+                        UserMessage(prompt),
+                    ],
+                    temperature=0.7,
+                    top_p=0.9,
+                    model=self.model
+                )
+                
+                elapsed_time = time.time() - start_time
+                logging.info(f"Received response from LLM service in {elapsed_time:.2f} seconds")
+                
+            except HttpResponseError as e:
+                elapsed_time = time.time() - start_time
+                error_details = {
+                    "status_code": e.status_code if hasattr(e, 'status_code') else "unknown",
+                    "error_code": e.error.code if hasattr(e, 'error') and hasattr(e.error, 'code') else "unknown",
+                    "message": str(e),
+                    "elapsed_time": f"{elapsed_time:.2f} seconds"
+                }
+                logging.error(f"Azure HTTP Response Error: {json.dumps(error_details)}")
+                return {"error": f"Azure OpenAI API error: {str(e)}", "products": [], "details": error_details}
+                
+            except ServiceRequestError as e:
+                elapsed_time = time.time() - start_time
+                logging.error(f"Azure Service Request Error after {elapsed_time:.2f} seconds: {str(e)}")
+                return {"error": f"Failed to connect to Azure OpenAI service: {str(e)}", "products": []}
+                
+            except ServiceResponseError as e:
+                elapsed_time = time.time() - start_time
+                logging.error(f"Azure Service Response Error after {elapsed_time:.2f} seconds: {str(e)}")
+                return {"error": f"Azure OpenAI service returned an error: {str(e)}", "products": []}
             
             if not response or not response.choices:
                 logging.error("Empty response from LLM service")
@@ -127,5 +156,6 @@ Example response: {
                 return {"error": "Invalid response format", "products": []}
 
         except Exception as e:
-            logging.error(f"Error fetching LLM response: {str(e)}", exc_info=True)
+            logging.error(f"Error fetching LLM response: {str(e)}")
+            logging.error(f"Traceback: {traceback.format_exc()}")
             return {"error": f"LLM service error: {str(e)}", "products": []}

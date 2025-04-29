@@ -5,6 +5,7 @@ from langchain_core.messages import BaseMessage
 import json
 import logging
 import traceback
+import time
 
 class ProductComparisonService:
     def __init__(self, llm_service):
@@ -23,11 +24,26 @@ class ProductComparisonService:
         def fetch_products(state: Dict) -> Dict:
             try:
                 logging.info(f"Fetching products from message: {state['user_message']}")
+                start_time = time.time()
+                
                 raw_response = self.llm_service.fetch_response(state["user_message"])
                 
+                elapsed_time = time.time() - start_time
+                logging.info(f"LLM response received in {elapsed_time:.2f} seconds")
+                
                 if "error" in raw_response:
+                    error_msg = raw_response.get("error", "Unknown error in LLM service")
+                    logging.error(f"LLM service error: {error_msg}")
+                    
+                    # Check for Azure-specific error details
+                    details = raw_response.get("details", {})
+                    if details:
+                        logging.error(f"Error details: {json.dumps(details)}")
+                    
                     return {
-                        "error": raw_response["error"],
+                        "success": False,
+                        "error": error_msg,
+                        "details": details if details else None,
                         "products": [],
                         "should_continue": False
                     }
@@ -41,15 +57,25 @@ class ProductComparisonService:
                     "success": True
                 }
             except Exception as e:
-                logging.error(f"Error in fetch_products: {str(e)}\n{traceback.format_exc()}")
-                return {"error": str(e), "products": [], "should_continue": False}
+                error_traceback = traceback.format_exc()
+                logging.error(f"Error in fetch_products: {str(e)}")
+                logging.error(f"Traceback: {error_traceback}")
+                return {
+                    "success": False, 
+                    "error": f"Product comparison error: {str(e)}", 
+                    "products": [], 
+                    "should_continue": False
+                }
 
         def mark_unhealthy_ingredients(state: Dict) -> Dict:
             try:
-                if not state.get("should_continue", False):
+                # If there was an error in the previous step, just pass it through
+                if not state.get("success", False) or not state.get("should_continue", False):
+                    logging.warning("Skipping unhealthy ingredients marking due to previous error")
                     return state
                 
                 products = state.get("products", [])
+                logging.info(f"Marking unhealthy ingredients for {len(products)} products")
                 
                 # Common unhealthy ingredients to check for
                 unhealthy_ingredients = {
@@ -87,7 +113,9 @@ class ProductComparisonService:
                     "query": state.get("user_message", "")
                 }
             except Exception as e:
-                logging.error(f"Error in mark_unhealthy_ingredients: {str(e)}\n{traceback.format_exc()}")
+                error_traceback = traceback.format_exc()
+                logging.error(f"Error in mark_unhealthy_ingredients: {str(e)}")
+                logging.error(f"Traceback: {error_traceback}")
                 return {"success": False, "error": str(e), "products": []}
 
         # Create the graph
@@ -107,9 +135,28 @@ class ProductComparisonService:
 
     def process_message(self, message: str) -> Dict:
         try:
-            return self.graph.invoke({
+            logging.info(f"Processing message through workflow graph: {message[:50]}...")
+            start_time = time.time()
+            
+            result = self.graph.invoke({
                 "user_message": message
             })
+            
+            elapsed_time = time.time() - start_time
+            logging.info(f"Message processing completed in {elapsed_time:.2f} seconds")
+            
+            # Log success/failure
+            if result.get("success", False):
+                product_count = len(result.get("products", []))
+                logging.info(f"Successfully processed message with {product_count} products found")
+            else:
+                error_msg = result.get("error", "Unknown error")
+                logging.error(f"Failed to process message: {error_msg}")
+            
+            return result
+            
         except Exception as e:
-            logging.error(f"Error processing message: {str(e)}\n{traceback.format_exc()}")
-            return {"success": False, "error": str(e), "products": []}
+            error_traceback = traceback.format_exc()
+            logging.error(f"Unexpected error processing message: {str(e)}")
+            logging.error(f"Traceback: {error_traceback}")
+            return {"success": False, "error": f"Workflow error: {str(e)}", "products": []}
