@@ -18,6 +18,17 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
+          
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+          
+      - name: Install Python Dependencies
+        run: |
+          cd dynamic-server
+          pip install -r requirements.txt
+          
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -26,9 +37,8 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           app_location: "/dynamic-ui"       # App source code path relative to repository root
           api_location: "/dynamic-server"   # API source code path - change if your API is elsewhere
-          output_location: "build"          # Built app content directory - should match Vite outDir
+          output_location: "dist"           # Built app content directory - Vite default is "dist" not "build"
           app_build_command: "npm run build"
-          api_build_command: "cd /home/runner/work/*/*/dynamic-server && pip install -r requirements.txt"
           
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
