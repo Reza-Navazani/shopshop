@@ -1,4 +1,17 @@
-const API_BASE_URL = 'http://localhost:5000';
+// Determine API base URL based on environment
+let API_BASE_URL;
+// In production (like Azure), use relative URLs or the actual deployed backend URL
+if (import.meta.env.PROD) {
+    // In production, use either a relative path (if frontend and backend are on same domain)
+    // or the full URL to your Azure-deployed backend
+    API_BASE_URL = '/api'; // This will make requests to the same domain as the frontend
+    // Alternatively, if your backend is deployed separately:
+    // API_BASE_URL = 'https://your-azure-app-name.azurewebsites.net';
+}
+else {
+    // In development, use localhost
+    API_BASE_URL = 'http://localhost:5000';
+}
 export const ApiService = {
     async sendMessage(message) {
         const response = await fetch(`${API_BASE_URL}/send-message`, {

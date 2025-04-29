@@ -13,8 +13,26 @@ def init_routes(service: ProductComparisonService):
     global comparison_service
     comparison_service = service
 
+# Original routes (keep for backward compatibility)
 @message_routes.route('/send-message', methods=['POST'])
 def handle_message():
+    return process_message_request()
+
+@message_routes.route('/boxes', methods=['GET'])
+def get_boxes():
+    return get_box_data()
+
+# New API routes with /api prefix
+@message_routes.route('/api/send-message', methods=['POST'])
+def api_handle_message():
+    return process_message_request()
+
+@message_routes.route('/api/boxes', methods=['GET'])
+def api_get_boxes():
+    return get_box_data()
+
+# Core function to process message requests
+def process_message_request():
     try:
         data = request.get_json()
         if not data or 'message' not in data:
@@ -42,8 +60,8 @@ def handle_message():
         logging.exception("Error processing message:")
         return jsonify({"error": str(e), "products": []}), 500
 
-@message_routes.route('/boxes', methods=['GET'])
-def get_boxes():
+# Core function to get box data
+def get_box_data():
     try:
         if comparison_service is None:
             return jsonify({"error": "Service not initialized", "products": []}), 500

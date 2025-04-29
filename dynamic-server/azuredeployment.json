@@ -1,0 +1,38 @@
+{
+  "name": "Python Flask Web App",
+  "platform": {
+    "apiVersion": "2018-02-01",
+    "kind": "app",
+    "name": "linux"
+  },
+  "properties": {
+    "containerSize": 1536,
+    "siteConfig": {
+      "appSettings": [
+        {
+          "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+          "value": "true"
+        },
+        {
+          "name": "ENABLE_ORYX_BUILD",
+          "value": "true"
+        },
+        {
+          "name": "GITHUB_LLM_TOKEN",
+          "value": ""
+        },
+        {
+          "name": "GITHUB_LLM_ENDPOINT",
+          "value": "https://models.github.ai/inference"
+        },
+        {
+          "name": "GITHUB_LLM_MODEL",
+          "value": "openai/gpt-4.1"
+        }
+      ],
+      "linuxFxVersion": "PYTHON|3.11",
+      "appCommandLine": "startup.sh"
+    },
+    "pythonVersion": "3.11"
+  }
+}
