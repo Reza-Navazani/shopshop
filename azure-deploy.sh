@@ -41,9 +41,11 @@ az webapp config set --resource-group $RESOURCE_GROUP --name $APP_SERVICE_NAME \
   --linux-fx-version "PYTHON|3.13"
 
 # Set startup command to use the full path to the startup script
+echo "Setting startup command to use root-level startup.sh..."
 az webapp config appsettings set --resource-group $RESOURCE_GROUP --name $APP_SERVICE_NAME \
   --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-            COMMAND="/home/site/wwwroot/startup.sh"
+            WEBSITE_RUN_FROM_PACKAGE=0 \
+            COMMAND="startup.sh"
 
 # Ensure startup script is executable after deployment
 echo "Setting script permissions..."

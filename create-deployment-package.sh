@@ -18,15 +18,15 @@ if [ -f "$OUTPUT_ZIP" ]; then
     rm "$OUTPUT_ZIP"
 fi
 
-# Ensure the required files in the backend directory have appropriate permissions
+# Ensure the required files have appropriate permissions
 echo "Setting file permissions..."
-chmod +x "$BACKEND_DIR/startup.sh"
+chmod +x "$REPO_ROOT/startup.sh"
 
 # Create a .deployment file to guide Azure's deployment process
 echo "Creating .deployment file..."
 cat > "$BACKEND_DIR/.deployment" << EOF
 [config]
-command = bash startup.sh
+command = bash /home/site/wwwroot/startup.sh
 EOF
 
 # Make sure web.config exists in the deployment
@@ -50,10 +50,27 @@ if [ ! -f "$BACKEND_DIR/web.config" ]; then
 EOF
 fi
 
-# Create the zip file from the backend directory
-echo "Creating zip archive from $BACKEND_DIR..."
-cd "$BACKEND_DIR" || { echo "Failed to change to backend directory"; exit 1; }
+# Create a temporary directory for deployment
+TEMP_DEPLOY_DIR="$REPO_ROOT/temp_deploy"
+mkdir -p "$TEMP_DEPLOY_DIR"
+
+# Copy the backend files
+echo "Copying backend files to temporary directory..."
+cp -r "$BACKEND_DIR/"* "$TEMP_DEPLOY_DIR/"
+cp -r "$BACKEND_DIR/.deployment" "$TEMP_DEPLOY_DIR/" 2>/dev/null || true
+
+# Copy the root startup.sh to the deployment directory
+echo "Copying root startup.sh to deployment package..."
+cp "$REPO_ROOT/startup.sh" "$TEMP_DEPLOY_DIR/"
+
+# Create the zip file from the temporary directory
+echo "Creating zip archive..."
+cd "$TEMP_DEPLOY_DIR" || { echo "Failed to change to temporary directory"; exit 1; }
 zip -r "$OUTPUT_ZIP" * .deployment -x "**/__pycache__/*" -x "**/.git/*" -x "**/.vscode/*" -x "**/.idea/*"
+
+# Clean up temporary directory
+cd "$REPO_ROOT" || { echo "Failed to change back to repository root"; exit 1; }
+rm -rf "$TEMP_DEPLOY_DIR"
 
 echo "Deployment package created at: $OUTPUT_ZIP"
 echo "You can now deploy this package to Azure App Service."
