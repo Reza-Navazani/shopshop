@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist',
+    outDir: 'build',
     sourcemap: false,
     // Configure base URL if deploying to a subdirectory
     // base: '/my-app/',

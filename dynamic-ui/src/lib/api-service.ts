@@ -5,12 +5,9 @@ let API_BASE_URL: string;
 
 // In production (like Azure), use relative URLs or the actual deployed backend URL
 if (import.meta.env.PROD) {
-  // When deployed to Azure Static Web Apps with separate backend
-  // Replace this URL with your actual Azure Web App URL once deployed
-  API_BASE_URL = 'https://your-backend-name.azurewebsites.net';
-  
-  // If you configure proxying in your Static Web App, you could use:
-  // API_BASE_URL = '/api';
+  // When deployed to Azure Static Web Apps with a backend
+  // We can use a relative URL since Static Web Apps can proxy to the backend
+  API_BASE_URL = '/api';
 } else {
   // In development, use localhost
   API_BASE_URL = 'http://localhost:5000';
