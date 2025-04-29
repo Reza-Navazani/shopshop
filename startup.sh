@@ -13,6 +13,19 @@ fi
 
 echo "Root directory: $ROOT_DIR"
 
+# Check if we're in an Oryx deployment where files may be extracted elsewhere
+if [ -f "$ROOT_DIR/oryx-manifest.toml" ] && [ -f "$ROOT_DIR/output.tar.gz" ]; then
+    echo "Detected Oryx deployment with compressed output"
+    # Try to find the application directory by checking typical temp directories
+    for TEMP_DIR in /tmp/* ; do
+        if [ -d "$TEMP_DIR" ] && [ -f "$TEMP_DIR/main.py" -o -d "$TEMP_DIR/dynamic-server" ]; then
+            echo "Found application files in temporary directory: $TEMP_DIR"
+            ROOT_DIR="$TEMP_DIR"
+            break
+        fi
+    done
+fi
+
 # Check if we're in the right directory structure
 if [ -d "$ROOT_DIR/dynamic-server" ]; then
     # If we have a dynamic-server directory, use that
@@ -28,10 +41,18 @@ else
         APP_DIR="$ROOT_DIR"
         echo "Treating current directory as dynamic-server"
     else
-        echo "ERROR: Could not find application files in expected locations"
-        echo "Directory contents:"
-        ls -la "$ROOT_DIR"
-        exit 1
+        # Last resort - search for main.py in subdirectories
+        echo "Searching for main.py in subdirectories..."
+        MAIN_PY_DIR=$(find "$ROOT_DIR" -name "main.py" -type f -print 2>/dev/null | head -n 1 | xargs dirname 2>/dev/null)
+        if [ -n "$MAIN_PY_DIR" ]; then
+            APP_DIR="$MAIN_PY_DIR"
+            echo "Found main.py in: $APP_DIR"
+        else
+            echo "ERROR: Could not find application files in expected locations"
+            echo "Directory contents:"
+            ls -la "$ROOT_DIR"
+            exit 1
+        fi
     fi
 fi
 
@@ -111,6 +132,15 @@ else
     echo "Static directory exists, skipping frontend build."
 fi
 
+# Make sure the static directory exists
+mkdir -p "$STATIC_DIR"
+
+# Create a basic index.html if it doesn't exist
+if [ ! -f "$STATIC_DIR/index.html" ]; then
+    echo "<html><body><h1>API Server Running</h1><p>The static files were not built correctly.</p></body></html>" > "$STATIC_DIR/index.html"
+    echo "Created a basic index.html file in the static directory."
+fi
+
 # Set environment variables
 export FLASK_APP=main.py
 export PORT="${WEBSITES_PORT:-${PORT:-8000}}"
@@ -122,6 +152,12 @@ if [ ! -f "main.py" ]; then
     echo "Directory contents:"
     ls -la
     exit 1
+fi
+
+# Check if gunicorn is installed, if not install it
+if ! command -v gunicorn &> /dev/null; then
+    echo "Installing gunicorn..."
+    python -m pip install gunicorn
 fi
 
 # Start the application with gunicorn
