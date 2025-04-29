@@ -18,10 +18,6 @@
           "value": "true"
         },
         {
-          "name": "GITHUB_LLM_TOKEN",
-          "value": ""
-        },
-        {
           "name": "GITHUB_LLM_ENDPOINT",
           "value": "https://models.github.ai/inference"
         },
