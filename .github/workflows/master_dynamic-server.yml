@@ -37,16 +37,14 @@ jobs:
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
       - name: Zip artifact for deployment
-        working-directory: ./dynamic-server # Change working directory to package only the server app
-        run: zip ../release.zip ./* -r # Zip contents relative to dynamic-server
+        # Change into dynamic-server, zip its contents, output to root
+        run: (cd dynamic-server && zip ../release.zip -r .)
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            release.zip # Upload the zip file created in the root
-            !venv/
+          path: release.zip # Path relative to workspace root
 
   deploy:
     runs-on: ubuntu-latest
