@@ -5,10 +5,34 @@ echo "Starting application deployment $(date)"
 
 # Determine the application directory
 if [ -d "/home/site/wwwroot" ]; then
-    APP_DIR="/home/site/wwwroot"
+    ROOT_DIR="/home/site/wwwroot"
 else
     # Fallback to current directory
-    APP_DIR=$(pwd)
+    ROOT_DIR=$(pwd)
+fi
+
+echo "Root directory: $ROOT_DIR"
+
+# Check if we're in the right directory structure
+if [ -d "$ROOT_DIR/dynamic-server" ]; then
+    # If we have a dynamic-server directory, use that
+    APP_DIR="$ROOT_DIR/dynamic-server"
+    echo "Found dynamic-server directory at: $APP_DIR"
+elif [ -f "$ROOT_DIR/main.py" ]; then
+    # If main.py is in the root, use that
+    APP_DIR="$ROOT_DIR"
+    echo "Found main.py in root directory"
+else
+    # Check if this might be the dynamic-server directory already
+    if [ -f "$ROOT_DIR/application.py" ] || [ -f "$ROOT_DIR/wsgi.py" ]; then
+        APP_DIR="$ROOT_DIR"
+        echo "Treating current directory as dynamic-server"
+    else
+        echo "ERROR: Could not find application files in expected locations"
+        echo "Directory contents:"
+        ls -la "$ROOT_DIR"
+        exit 1
+    fi
 fi
 
 echo "Application directory: $APP_DIR"
@@ -24,7 +48,18 @@ ls -la
 # Install dependencies
 echo "Installing Python dependencies..."
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+if [ -f "requirements.txt" ]; then
+    python -m pip install -r requirements.txt
+else
+    echo "WARNING: requirements.txt not found in $APP_DIR"
+    # Try to find requirements.txt in other locations
+    if [ -f "$ROOT_DIR/requirements.txt" ]; then
+        echo "Found requirements.txt in $ROOT_DIR"
+        python -m pip install -r "$ROOT_DIR/requirements.txt"
+    else
+        echo "ERROR: Could not find requirements.txt in any expected location"
+    fi
+fi
 
 # Check if we need to build the React frontend (only on first deployment)
 STATIC_DIR="$APP_DIR/static"
@@ -33,7 +68,9 @@ if [ ! -d "$STATIC_DIR" ] || [ ! -f "$STATIC_DIR/index.html" ]; then
     echo "Static files not found, looking for UI project..."
     
     # Check if frontend is included in deployment
-    if [ -d "$APP_DIR/../dynamic-ui" ]; then
+    if [ -d "$ROOT_DIR/dynamic-ui" ]; then
+        UI_DIR="$ROOT_DIR/dynamic-ui"
+    elif [ -d "$APP_DIR/../dynamic-ui" ]; then
         UI_DIR="$APP_DIR/../dynamic-ui"
     elif [ -d "$APP_DIR/dynamic-ui" ]; then
         UI_DIR="$APP_DIR/dynamic-ui"
