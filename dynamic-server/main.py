@@ -83,7 +83,9 @@ def api_health_check():
 def health_check():
     return jsonify({"status": "healthy"}), 200
 
-# Initialize services and controller
+# Initialize services and controller - with better error handling
+llm_service = None
+comparison_service = None
 try:
     llm_service = GitHubLLMService(
         endpoint=Config.GITHUB_LLM_ENDPOINT,
@@ -97,9 +99,11 @@ try:
     # Register the message_routes blueprint
     init_routes(comparison_service)
     app.register_blueprint(message_routes)
+    logging.info("Successfully initialized all services and routes")
 except Exception as e:
-    logging.error(f"Failed to initialize services: {str(e)}")
-    raise
+    logging.error(f"Failed to initialize some services: {str(e)}")
+    logging.warning("Application will start with limited functionality")
+    # Don't re-raise the exception, let the app continue to start
 
 @app.errorhandler(Exception)
 def handle_exception(e):
