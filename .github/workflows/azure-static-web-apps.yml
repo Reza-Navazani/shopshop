@@ -29,6 +29,16 @@ jobs:
           cd dynamic-server
           pip install -r requirements.txt
           
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          
+      - name: Install UI Dependencies
+        run: |
+          cd dynamic-ui
+          npm install
+          
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1

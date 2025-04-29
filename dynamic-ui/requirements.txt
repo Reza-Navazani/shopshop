@@ -1,0 +1,3 @@
+# This file intentionally left empty
+# The dynamic-ui project is a JavaScript/TypeScript project using Node.js
+# This file exists only to satisfy CI/CD pipeline checks
