@@ -98,6 +98,10 @@ jobs:
             # Set the startup command for the web app
             # IMPORTANT: Replace 'main:app' if your entry point file or Flask app variable is different
             az webapp config set --resource-group $RESOURCE_GROUP --name dynamic-server --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 main:app"
+            
+            # Add a longer delay before deployment to avoid SCM container restart conflicts
+            echo "Waiting 120 seconds to allow the SCM container to stabilize..."
+            sleep 120
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
@@ -106,6 +110,4 @@ jobs:
           app-name: 'dynamic-server'
           slot-name: 'Production'
           package: 'release.zip' # Deploy the zip file directly
-          respect-pom-xml: false
-          timeout: 1800000  # 30 minutes timeout
 
