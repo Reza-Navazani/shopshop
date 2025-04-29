@@ -88,6 +88,17 @@ jobs:
             echo "Waiting 30 seconds to avoid SCM container restart conflicts..."
             sleep 30
 
+      - name: Set Startup Command
+        uses: azure/CLI@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            # Use the same resource group as before
+            RESOURCE_GROUP="shop_assist_agent"
+            # Set the startup command for the web app
+            # IMPORTANT: Replace 'main:app' if your entry point file or Flask app variable is different
+            az webapp config set --resource-group $RESOURCE_GROUP --name dynamic-server --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 main:app"
+
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
