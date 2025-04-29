@@ -74,10 +74,21 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_EEFDBE7E255B4631991E412FBA8274D9 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0EB87D326A084DE89C2060B5D61BCE3C }}
 
+      - name: 'Configure App Service for Log Streaming'
+        uses: azure/CLI@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            # Remove any IP restrictions that might be blocking log streaming
+            az webapp config access-restriction remove --resource-group $(az webapp show --name dynamic-server --query resourceGroup --output tsv) --name dynamic-server --rule-name AllowAll --action Allow --priority 100 --ip-address "0.0.0.0/0" || echo "No restrictions to remove"
+            
+            # Configure web app settings to enable logging
+            az webapp config appsettings set --resource-group $(az webapp show --name dynamic-server --query resourceGroup --output tsv) --name dynamic-server --settings WEBSITE_HTTPLOGGING_RETENTION_DAYS=7 SCM_LOGSTREAM_ENABLED=true
+
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
           app-name: 'dynamic-server'
           slot-name: 'Production'
-          
+
