@@ -79,8 +79,8 @@ jobs:
         with:
           azcliversion: latest
           inlineScript: |
-            # Get the resource group name
-            RESOURCE_GROUP=$(az webapp show --name dynamic-server --query resourceGroup --output tsv)
+            # Use the provided resource group name
+            RESOURCE_GROUP="shop_assist_agent"
             
             # Remove any IP restrictions that might be blocking log streaming
             az webapp config access-restriction remove --resource-group $RESOURCE_GROUP --name dynamic-server --rule-name AllowAll || echo "No restrictions to remove"
