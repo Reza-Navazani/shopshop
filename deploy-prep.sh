@@ -36,4 +36,22 @@ echo "Copying frontend build to backend..."
 mkdir -p "$BACKEND_DIR/static"
 cp -r "$FRONTEND_BUILD_DIR"/* "$BACKEND_DIR/static/" || { echo "Failed to copy frontend build"; exit 1; }
 
+# Ensure startup.sh has executable permissions
+chmod +x "$BACKEND_DIR/startup.sh"
+echo "Added executable permissions to startup.sh"
+
+# Convert line endings to Unix format (important for Azure Linux environments)
+if command -v dos2unix &> /dev/null; then
+    dos2unix "$BACKEND_DIR/startup.sh"
+    echo "Converted startup.sh line endings to Unix format"
+else
+    echo "Warning: dos2unix not found. Line endings might cause issues in Linux environment."
+    # Alternative approach if dos2unix is not available
+    if command -v sed &> /dev/null; then
+        sed -i 's/\r$//' "$BACKEND_DIR/startup.sh"
+        echo "Used sed to convert line endings to Unix format"
+    fi
+fi
+
+# Print confirmation
 echo "Deployment preparation completed successfully"

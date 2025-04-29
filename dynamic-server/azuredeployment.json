@@ -30,9 +30,9 @@
           "value": "openai/gpt-4.1"
         }
       ],
-      "linuxFxVersion": "PYTHON|3.11",
-      "appCommandLine": "startup.sh"
+      "linuxFxVersion": "PYTHON|3.13",
+      "appCommandLine": "/home/site/wwwroot/startup.sh"
     },
-    "pythonVersion": "3.11"
+    "pythonVersion": "3.13"
   }
 }

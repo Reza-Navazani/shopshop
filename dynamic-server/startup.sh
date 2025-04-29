@@ -12,7 +12,14 @@ else
 fi
 
 echo "Application directory: $APP_DIR"
-cd $APP_DIR
+cd "$APP_DIR" || { echo "Failed to change to application directory"; exit 1; }
+
+# Print environment information for debugging
+echo "Python version:"
+python --version
+echo "Working directory: $(pwd)"
+echo "Directory contents:"
+ls -la
 
 # Install dependencies
 echo "Installing Python dependencies..."
@@ -40,7 +47,7 @@ if [ ! -d "$STATIC_DIR" ] || [ ! -f "$STATIC_DIR/index.html" ]; then
     # If UI project was found, build it
     if [ -n "$UI_DIR" ]; then
         echo "Found UI project at: $UI_DIR"
-        cd "$UI_DIR"
+        cd "$UI_DIR" || { echo "Failed to change to UI directory"; exit 1; }
         
         # Check if npm is available
         if command -v npm &> /dev/null; then
@@ -61,7 +68,7 @@ if [ ! -d "$STATIC_DIR" ] || [ ! -f "$STATIC_DIR/index.html" ]; then
         fi
         
         # Return to the application directory
-        cd "$APP_DIR"
+        cd "$APP_DIR" || { echo "Failed to return to application directory"; exit 1; }
     fi
 else
     echo "Static directory exists, skipping frontend build."
@@ -72,6 +79,15 @@ export FLASK_APP=main.py
 export PORT="${WEBSITES_PORT:-${PORT:-8000}}"
 echo "Using PORT: $PORT"
 
+# Check if main.py exists
+if [ ! -f "main.py" ]; then
+    echo "ERROR: main.py not found in $(pwd)"
+    echo "Directory contents:"
+    ls -la
+    exit 1
+fi
+
 # Start the application with gunicorn
 echo "Starting application with gunicorn..."
+echo "Command: gunicorn --bind=0.0.0.0:$PORT --timeout 600 --access-logfile - --error-logfile - main:app"
 gunicorn --bind=0.0.0.0:$PORT --timeout 600 --access-logfile - --error-logfile - main:app
