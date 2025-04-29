@@ -1,5 +1,5 @@
 #!/bin/bash
-# Startup script for running the Flask application on Azure Web App
+
 cd /home/site/wwwroot
 
 echo "Starting application in directory: $(pwd)"

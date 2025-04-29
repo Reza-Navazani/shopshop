@@ -31,7 +31,7 @@
         }
       ],
       "linuxFxVersion": "PYTHON|3.13",
-      "appCommandLine": "/home/site/wwwroot/startup.sh"
+      "appCommandLine": "gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 2 --access-logfile '-' --error-logfile '-' wsgi:app"
     },
     "pythonVersion": "3.13"
   }
