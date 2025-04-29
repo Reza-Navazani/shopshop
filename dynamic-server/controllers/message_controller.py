@@ -1,6 +1,7 @@
 import json
 import logging
 import traceback
+import os
 from flask import jsonify, request, Blueprint
 from services.github_llm_service import GitHubLLMService
 from services.product_comparison_service import ProductComparisonService
@@ -30,6 +31,44 @@ def api_handle_message():
 @message_routes.route('/api/boxes', methods=['GET'])
 def api_get_boxes():
     return get_box_data()
+
+# Add a diagnostic endpoint to test LLM connectivity
+@message_routes.route('/api/llm-health', methods=['GET'])
+def llm_health_check():
+    try:
+        # Get current environment variables
+        env_vars = {
+            "GITHUB_LLM_ENDPOINT": os.getenv('GITHUB_LLM_ENDPOINT', 'Not set'),
+            "GITHUB_LLM_MODEL": os.getenv('GITHUB_LLM_MODEL', 'Not set'),
+            "GITHUB_LLM_TOKEN_SET": "Yes" if os.getenv('GITHUB_LLM_TOKEN') else "No"
+        }
+        
+        # Test connectivity with a minimal LLM call
+        if comparison_service and comparison_service.llm_service:
+            # Simple test prompt
+            test_result = comparison_service.llm_service.fetch_response("test connectivity with a simple response")
+            llm_status = "working" if "products" in test_result and "error" not in test_result else "failing"
+            error_details = test_result.get("error", None) if "error" in test_result else None
+        else:
+            llm_status = "service not initialized"
+            error_details = "LLM service not properly initialized"
+        
+        return jsonify({
+            "status": "healthy" if llm_status == "working" else "unhealthy",
+            "llm_status": llm_status,
+            "environment": env_vars,
+            "error": error_details
+        }), 200 if llm_status == "working" else 500
+    except Exception as e:
+        error_traceback = traceback.format_exc()
+        logging.error(f"Error in LLM health check: {str(e)}")
+        logging.error(f"Traceback: {error_traceback}")
+        return jsonify({
+            "status": "unhealthy",
+            "llm_status": "error",
+            "error": str(e),
+            "traceback": error_traceback
+        }), 500
 
 # Core function to process message requests
 def process_message_request():
