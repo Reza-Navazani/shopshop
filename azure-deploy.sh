@@ -1,125 +1,105 @@
 #!/bin/bash
 
-# Azure deployment script for dynamic-server application
-# Run this script from the root of your project
+# Azure deployment script for the dynamic-server application
+# This script creates a deployment package and deploys it to Azure
 
-echo "Starting Azure deployment process..."
+set -e  # Exit immediately if a command exits with a non-zero status
 
-# Ensure we're in the project root
-cd "$(dirname "$0")"
+echo "===== Starting Azure deployment process ====="
 
-# Create deployment package directory if it doesn't exist
-DEPLOY_DIR="./deploy_package"
-mkdir -p "$DEPLOY_DIR"
+# First, run the preparation script
+./prepare-deployment.sh
 
-# Build the frontend and copy to backend static folder
-echo "Building frontend and preparing backend..."
-bash ./deploy-prep.sh
+# Navigate to the deployment package directory
+cd deploy_package
 
-# Create a deployment package
-echo "Creating deployment package..."
+echo "===== Creating compressed deployment package ====="
 
-# Define paths
-SCRIPT_DIR=$(dirname "$0")
-REPO_ROOT="$SCRIPT_DIR"
-DEPLOY_PACKAGE_DIR="$REPO_ROOT/deploy_package"
-BACKEND_DIR="$REPO_ROOT/dynamic-server"
-
-# Create deployment package directory (clean if exists)
-if [ -d "$DEPLOY_PACKAGE_DIR" ]; then
-    rm -rf "$DEPLOY_PACKAGE_DIR"
+# First check if virtual environment exists
+if [ ! -d "antenv" ]; then
+    echo "ERROR: Virtual environment not found. Please run prepare-deployment.sh first."
+    exit 1
 fi
-mkdir -p "$DEPLOY_PACKAGE_DIR"
 
-# Copy backend code to deployment directory
-echo "Copying backend files..."
-cp -r "$BACKEND_DIR"/* "$DEPLOY_PACKAGE_DIR/"
+# Create a deployment zip file
+# Important: We need to preserve the virtual environment paths
+echo "Creating deployment zip file..."
+zip -r deployment.zip . -x "antenv/*" "*.git*"
 
-# Copy the startup script to the root of the deployment package
-echo "Copying startup script..."
-cp "$REPO_ROOT/startup.sh" "$DEPLOY_PACKAGE_DIR/"
+# Get Azure account info
+SUBSCRIPTION=$(az account show --query id -o tsv 2>/dev/null || echo "")
+if [ -z "$SUBSCRIPTION" ]; then
+    echo "You need to log in to Azure first."
+    az login
+fi
 
-# Copy requirements.txt to the root as well for redundancy
-echo "Copying requirements.txt to root..."
-cp "$BACKEND_DIR/requirements.txt" "$DEPLOY_PACKAGE_DIR/"
+# Get resource group - either from parameter or prompt user
+RESOURCE_GROUP=${1:-""}
+if [ -z "$RESOURCE_GROUP" ]; then
+    read -p "Enter your Azure Resource Group name: " RESOURCE_GROUP
+fi
 
-# Ensure correct permissions
-echo "Setting file permissions..."
-chmod +x "$DEPLOY_PACKAGE_DIR/startup.sh"
+# Get app name - either from parameter or prompt user
+APP_NAME=${2:-"shopper-agent"}
+if [ -z "$APP_NAME" ]; then
+    read -p "Enter your Azure Web App name: " APP_NAME
+fi
 
-# Create a simple web.config to ensure Azure can properly deploy
-echo "Creating web.config..."
-cat > "$DEPLOY_PACKAGE_DIR/web.config" << EOF
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <system.webServer>
-    <handlers>
-      <add name="PythonHandler" path="*" verb="*" modules="httpPlatformHandler" resourceType="Unspecified" />
-    </handlers>
-    <httpPlatform processPath="%HOME%\site\wwwroot\startup.sh"
-                  arguments=""
-                  stdoutLogEnabled="true"
-                  stdoutLogFile="%HOME%\LogFiles\python.log"
-                  startupTimeLimit="600">
-      <environmentVariables>
-        <environmentVariable name="PORT" value="%HTTP_PLATFORM_PORT%" />
-      </environmentVariables>
-    </httpPlatform>
-  </system.webServer>
-</configuration>
-EOF
+# Check if the web app exists
+WEBAPP_EXISTS=$(az webapp list --resource-group "$RESOURCE_GROUP" --query "[?name=='$APP_NAME'].name" -o tsv)
 
-# Create a .deployment file to guide Azure's deployment
-echo "Creating .deployment file..."
-cat > "$DEPLOY_PACKAGE_DIR/.deployment" << EOF
-[config]
-command = bash startup.sh
-EOF
+if [ -z "$WEBAPP_EXISTS" ]; then
+    # Create a new web app if it doesn't exist
+    echo "Creating new web app $APP_NAME in resource group $RESOURCE_GROUP..."
+    
+    # Get location - either from parameter or prompt user
+    LOCATION=${3:-""}
+    if [ -z "$LOCATION" ]; then
+        # Show available locations
+        echo "Available locations:"
+        az account list-locations --query "[].name" -o tsv | head -n 10
+        read -p "Enter Azure region (location) for deployment: " LOCATION
+    fi
+    
+    echo "Creating web app with Python 3.13 runtime..."
+    az webapp create \
+        --resource-group "$RESOURCE_GROUP" \
+        --plan "$APP_NAME-plan" \
+        --name "$APP_NAME" \
+        --runtime "PYTHON:3.13" \
+        --location "$LOCATION" \
+        --sku B1
+else
+    echo "Web app $APP_NAME already exists in resource group $RESOURCE_GROUP."
+fi
 
-# Create archive from deployment directory
-echo "Creating archive..."
-cd "$DEPLOY_PACKAGE_DIR" || { echo "Failed to change to deployment directory"; exit 1; }
-zip -r "$REPO_ROOT/azure-deploy.zip" * .* -x "**/__pycache__/*" -x "**/.git/*" -x "**/.vscode/*" -x "**/.idea/*"
+# Configure the web app
+echo "Configuring web app settings..."
+az webapp config set \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$APP_NAME" \
+    --startup-file "dynamic-server/startup.sh" \
+    --python-version 3.13
 
-echo "Deployment package created at: $REPO_ROOT/azure-deploy.zip"
-echo "You can now upload this package to Azure App Service."
+# Set environment variables as needed
+echo "Setting environment variables..."
+az webapp config appsettings set \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$APP_NAME" \
+    --settings \
+        SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+        ENABLE_ORYX_BUILD=true
 
-# Set these variables to match your Azure setup
-RESOURCE_GROUP="shop_assist_agent"
-APP_SERVICE_NAME="shopper-agent"  # Update this to match your actual app service name
+# Deploy the zip file
+echo "Deploying application to Azure..."
+az webapp deployment source config-zip \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$APP_NAME" \
+    --src "deployment.zip"
 
-# Restart the web app to ensure clean deployment
-echo "Restarting the Azure App Service..."
-az webapp restart --resource-group $RESOURCE_GROUP --name $APP_SERVICE_NAME
+# Clean up
+rm deployment.zip
 
-# Wait a moment for the restart to complete
-sleep 10
-
-# Deploy the application
-echo "Deploying to Azure App Service..."
-az webapp deployment source config-zip --resource-group $RESOURCE_GROUP --name $APP_SERVICE_NAME --src "./azure-deploy.zip"
-
-# Set application settings
-echo "Configuring application settings..."
-az webapp config set --resource-group $RESOURCE_GROUP --name $APP_SERVICE_NAME \
-  --linux-fx-version "PYTHON|3.13"
-
-# Set startup command to use the full path to the startup script
-echo "Setting startup command to use root-level startup.sh..."
-az webapp config appsettings set --resource-group $RESOURCE_GROUP --name $APP_SERVICE_NAME \
-  --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-            WEBSITE_RUN_FROM_PACKAGE=0 \
-            COMMAND="startup.sh"
-
-# Ensure startup script is executable after deployment
-echo "Setting script permissions..."
-az webapp ssh --resource-group $RESOURCE_GROUP --name $APP_SERVICE_NAME \
-  --command "chmod +x /home/site/wwwroot/startup.sh" || \
-  echo "Could not set permissions via SSH. Will retry after deployment."
-
-# Try to set permissions again through a different method if SSH failed
-az webapp ssh --resource-group $RESOURCE_GROUP --name $APP_SERVICE_NAME \
-  --command "find /home/site/wwwroot -name '*.sh' -exec chmod +x {} \;" || \
-  echo "Could not set permissions through SSH. Check if script is executable."
-
-echo "Deployment completed. Check Azure portal for status."
+echo "===== Deployment completed ====="
+echo "Application URL: https://$APP_NAME.azurewebsites.net"
+echo "To watch the logs, run: az webapp log tail --name $APP_NAME --resource-group $RESOURCE_GROUP"
