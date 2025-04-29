@@ -79,11 +79,14 @@ jobs:
         with:
           azcliversion: latest
           inlineScript: |
+            # Get the resource group name
+            RESOURCE_GROUP=$(az webapp show --name dynamic-server --query resourceGroup --output tsv)
+            
             # Remove any IP restrictions that might be blocking log streaming
-            az webapp config access-restriction remove --resource-group $(az webapp show --name dynamic-server --query resourceGroup --output tsv) --name dynamic-server --rule-name AllowAll --action Allow --priority 100 --ip-address "0.0.0.0/0" || echo "No restrictions to remove"
+            az webapp config access-restriction remove --resource-group $RESOURCE_GROUP --name dynamic-server --rule-name AllowAll || echo "No restrictions to remove"
             
             # Configure web app settings to enable logging
-            az webapp config appsettings set --resource-group $(az webapp show --name dynamic-server --query resourceGroup --output tsv) --name dynamic-server --settings WEBSITE_HTTPLOGGING_RETENTION_DAYS=7 SCM_LOGSTREAM_ENABLED=true
+            az webapp config appsettings set --resource-group $RESOURCE_GROUP --name dynamic-server --settings WEBSITE_HTTPLOGGING_RETENTION_DAYS=7 SCM_LOGSTREAM_ENABLED=true
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
