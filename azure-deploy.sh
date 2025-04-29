@@ -38,7 +38,16 @@ az webapp deployment source config-zip --resource-group $RESOURCE_GROUP --name $
 # Set application settings
 echo "Configuring application settings..."
 az webapp config set --resource-group $RESOURCE_GROUP --name $APP_SERVICE_NAME \
-  --linux-fx-version "PYTHON|3.13" \
-  --startup-file "/home/site/wwwroot/startup.sh"
+  --linux-fx-version "PYTHON|3.13"
+
+# Set startup command to directly reference the script with bash
+az webapp config appsettings set --resource-group $RESOURCE_GROUP --name $APP_SERVICE_NAME \
+  --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+            COMMAND="bash /home/site/wwwroot/startup.sh"
+
+# Ensure startup script is executable after deployment
+echo "Setting script permissions..."
+az webapp ssh --resource-group $RESOURCE_GROUP --name $APP_SERVICE_NAME \
+  --command "chmod +x /home/site/wwwroot/startup.sh" || echo "Could not set permissions (will try on next deployment)"
 
 echo "Deployment completed. Check Azure portal for status."
