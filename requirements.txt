@@ -7,3 +7,4 @@ langchain-core>=0.1.0
 langgraph>=0.0.26
 azure-ai-inference>=1.0.0b9
 python-dotenv
+gunicorn==21.2.0
