@@ -1,25 +1,25 @@
 // Determine API base URL based on environment
 let API_BASE_URL;
-// In production (like Azure), use relative URLs or the actual deployed backend URL
+// In production (like Azure), use the environment variable or fallback to the Azure URL
 if (import.meta.env.PROD) {
-    // In production, use either a relative path (if frontend and backend are on same domain)
-    // or the full URL to your Azure-deployed backend
-    API_BASE_URL = '/api'; // This will make requests to the same domain as the frontend
-    // Alternatively, if your backend is deployed separately:
-    // API_BASE_URL = 'https://your-azure-app-name.azurewebsites.net';
+    // Use environment variable from .env.production
+    API_BASE_URL = import.meta.env.VITE_API_URL || 'https://dynamic-server-bmcsdef3b9dygjcy.canadacentral-01.azurewebsites.net';
 }
 else {
     // In development, use localhost
     API_BASE_URL = 'http://localhost:5000';
 }
 export const ApiService = {
-    async sendMessage(message) {
-        const response = await fetch(`${API_BASE_URL}/send-message`, {
+    async sendMessage(message, sessionId) {
+        const response = await fetch(`${API_BASE_URL}/api/send-message`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ message }),
+            body: JSON.stringify({
+                message,
+                sessionId: sessionId || `session-${Date.now()}`
+            }),
         });
         const data = await response.json();
         console.log('Send message response:', data);
@@ -31,7 +31,7 @@ export const ApiService = {
     async fetchBoxes() {
         try {
             console.log('Fetching boxes...');
-            const response = await fetch(`${API_BASE_URL}/boxes`);
+            const response = await fetch(`${API_BASE_URL}/api/boxes`);
             console.log('Fetch response status:', response.status);
             if (!response.ok) {
                 throw new Error('Failed to load products');
