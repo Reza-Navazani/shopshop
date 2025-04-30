@@ -22,14 +22,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onMessageSent, class
     };
 
     return (
-        <div className={`${className} bg-white rounded-2xl shadow-lg border border-gray-200`}>
-            <div className="flex flex-col p-4 gap-2">
+        <div className={`${className} bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-200`}>
+            <div className="flex flex-col p-2 sm:p-4 gap-1 sm:gap-2">
                 {isFocused && (
-                    <div className="text-sm text-gray-500">
+                    <div className="text-xs sm:text-sm text-gray-500">
                         Ask about products to compare (e.g., "Compare bread prices in Canada")
                     </div>
                 )}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2">
                     <input
                         type="text"
                         value={message}
@@ -38,13 +38,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onMessageSent, class
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                         placeholder="Ask about products..."
-                        className="flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-400"
+                        className="flex-1 bg-transparent outline-none text-sm sm:text-base text-gray-700 placeholder-gray-400"
                         disabled={disabled}
                     />
                     <button
                         onClick={handleSendMessage}
                         disabled={!message.trim() || disabled}
-                        className={`px-4 py-2 rounded-xl text-white font-medium transition-all duration-200 ${
+                        className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm text-white font-medium transition-all duration-200 ${
                             disabled || !message.trim()
                                 ? 'bg-gray-300 cursor-not-allowed'
                                 : 'bg-blue-500 hover:bg-blue-600'

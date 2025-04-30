@@ -1,3 +1,5 @@
 [config]
 project = dynamic-server
+SCM_DO_BUILD_DURING_DEPLOYMENT=true
+PYTHON_VERSION=3.13
 
