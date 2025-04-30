@@ -2,7 +2,7 @@ opencv-python
 requests
 numpy
 ultralytics
-pyzbar==0.1.8
+pyzbar==0.1.9
 Pillow
 Flask
 flask-cors
