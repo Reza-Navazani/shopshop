@@ -34,7 +34,7 @@ jobs:
         working-directory: dynamic-server
         run: |
           # Use the requirements.txt from the dynamic-server directory
-          pip install -r dynamic-server/requirements.txt
+          pip install -r requirements.txt
         
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
