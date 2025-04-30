@@ -25,11 +25,13 @@ jobs:
           python-version: '3.13'
 
       - name: Create and start virtual environment
+        working-directory: dynamic-server
         run: |
           python -m venv venv
           source venv/bin/activate
       
       - name: Install dependencies
+        working-directory: dynamic-server
         run: |
           # Use the requirements.txt from the dynamic-server directory
           pip install -r dynamic-server/requirements.txt
