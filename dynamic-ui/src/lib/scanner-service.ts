@@ -43,16 +43,42 @@ export const scanBarcode = async (imageBlob: Blob): Promise<ProductInfo> => {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Scanner server error:', errorText);
-                throw new Error(`Scanner server error: ${response.status} ${response.statusText}`);
+                return {
+                    name: 'Error',
+                    description: '',
+                    ingredients: '',
+                    barcode: '',
+                    error: `Scanner server error: ${response.status} ${response.statusText}`
+                };
             }
 
             const result = await response.json();
             console.log('Scanner server response:', result);
-            return result;
+            
+            // Validate the response format
+            if (!result || typeof result !== 'object') {
+                return {
+                    name: 'Error',
+                    description: '',
+                    ingredients: '',
+                    barcode: '',
+                    error: 'Invalid response format from server'
+                };
+            }
+            
+            // Ensure all required fields are present, even if empty
+            return {
+                name: result.name || '',
+                description: result.description || '',
+                ingredients: result.ingredients || '',
+                barcode: result.barcode || '',
+                error: result.error || undefined
+            };
         } catch (fetchError) {
             clearTimeout(timeoutId);
             
-            if (fetchError.name === 'AbortError') {
+            // Safe type checking for AbortError
+            if (fetchError && typeof fetchError === 'object' && 'name' in fetchError && fetchError.name === 'AbortError') {
                 console.error('Request timed out after 30 seconds');
                 return {
                     name: 'Error',
@@ -64,7 +90,9 @@ export const scanBarcode = async (imageBlob: Blob): Promise<ProductInfo> => {
             }
 
             // Handle CORS errors specifically
-            if (fetchError instanceof TypeError && fetchError.message.includes('NetworkError')) {
+            if (fetchError instanceof TypeError && 
+                typeof fetchError.message === 'string' && 
+                fetchError.message.includes('NetworkError')) {
                 console.error('CORS error detected:', fetchError);
                 return {
                     name: 'Error',
@@ -75,16 +103,33 @@ export const scanBarcode = async (imageBlob: Blob): Promise<ProductInfo> => {
                 };
             }
             
-            throw fetchError;
+            // Safe access to error message
+            const errorMessage = fetchError && typeof fetchError === 'object' && 'message' in fetchError 
+                ? fetchError.message 
+                : 'Unknown error';
+                
+            return {
+                name: 'Error',
+                description: '',
+                ingredients: '',
+                barcode: '',
+                error: `Network error: ${errorMessage}`
+            };
         }
     } catch (err) {
         console.error('Error in scanBarcode:', err);
+        
+        // Safe access to error message with proper type checking
+        const errorMessage = err && typeof err === 'object' && 'message' in err 
+            ? err.message 
+            : 'Unknown error';
+            
         return {
             name: 'Error',
             description: '',
             ingredients: '',
             barcode: '',
-            error: `Failed to scan barcode: ${err.message || 'Unknown error'}`
+            error: `Failed to scan barcode: ${errorMessage}`
         };
     }
 };

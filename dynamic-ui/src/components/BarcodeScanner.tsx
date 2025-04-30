@@ -76,9 +76,14 @@ export const BarcodeScanner = () => {
             console.log('Sending image for barcode scanning...');
             const result = await scanBarcode(blob);
             console.log('Scan result:', result);
-            if (result) {
+            
+            if (result.error) {
+                setError(result.error);
+                // Don't stop scanning on error, just show the error message
+            } else {
                 setProduct(result);
                 stopScanning();
+                setError(''); // Clear any previous errors on success
             }
         } catch (err) {
             console.error('Error scanning barcode:', err);
@@ -124,9 +129,16 @@ export const BarcodeScanner = () => {
         setIsProcessing(true);
         try {
             const result = await scanBarcode(file);
-            setProduct(result);
+            if (result.error) {
+                setError(result.error);
+                setProduct(null);
+            } else {
+                setProduct(result);
+                setError(''); // Clear any previous errors on success
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to process image');
+            setProduct(null);
         } finally {
             setIsProcessing(false);
         }
@@ -316,8 +328,8 @@ export const BarcodeScanner = () => {
 
                 {product && (
                     <div className="bg-white p-6 rounded-lg shadow-lg">
-                        <h3 className="text-xl font-semibold text-gray-900">{product.name}</h3>
-                        <p className="text-gray-600 mt-2">{product.description}</p>
+                        <h3 className="text-xl font-semibold text-gray-900">{product.name || 'Unknown Product'}</h3>
+                        <p className="text-gray-600 mt-2">{product.description || 'No description available'}</p>
                         {product.ingredients && (
                             <div className="mt-4">
                                 <h4 className="text-lg font-medium text-gray-900">Ingredients:</h4>
@@ -325,10 +337,7 @@ export const BarcodeScanner = () => {
                             </div>
                         )}
                         <div className="mt-4 pt-4 border-t border-gray-200">
-                            <p className="text-sm text-gray-500">Barcode: {product.barcode}</p>
-                            <p className="text-sm text-gray-500">name: {product.name}</p>
-                            <p className="text-sm text-gray-500">description: {product.description}</p>
-                            <p className="text-sm text-gray-500">ingredients: {product.ingredients}</p>
+                            <p className="text-sm text-gray-500">Barcode: {product.barcode || 'Unknown'}</p>
                         </div>
                     </div>
                 )}
