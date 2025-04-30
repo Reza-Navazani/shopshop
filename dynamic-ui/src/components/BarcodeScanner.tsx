@@ -10,6 +10,8 @@ export const BarcodeScanner = () => {
     const [stream, setStream] = useState<MediaStream | null>(null);
     const scanIntervalRef = useRef<number | undefined>(undefined);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [processingTime, setProcessingTime] = useState<number>(0);
+    const processingTimerRef = useRef<number | undefined>(undefined);
     const [dragActive, setDragActive] = useState<boolean>(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -19,6 +21,9 @@ export const BarcodeScanner = () => {
             if (scanIntervalRef.current) {
                 window.clearInterval(scanIntervalRef.current);
             }
+            if (processingTimerRef.current) {
+                window.clearInterval(processingTimerRef.current);
+            }
             stopScanning();
         };
     }, []);
@@ -27,6 +32,11 @@ export const BarcodeScanner = () => {
         if (scanIntervalRef.current) {
             window.clearInterval(scanIntervalRef.current);
             scanIntervalRef.current = undefined;
+        }
+        if (processingTimerRef.current) {
+            window.clearInterval(processingTimerRef.current);
+            processingTimerRef.current = undefined;
+            setProcessingTime(0);
         }
         if (stream) {
             stream.getTracks().forEach(track => {
@@ -41,6 +51,29 @@ export const BarcodeScanner = () => {
         setIsScanning(false);
         setIsProcessing(false);
     }, [stream]);
+
+    const startProcessingTimer = useCallback(() => {
+        // Clear any existing timer
+        if (processingTimerRef.current) {
+            window.clearInterval(processingTimerRef.current);
+        }
+        
+        // Reset the timer
+        setProcessingTime(0);
+        
+        // Start a new timer that updates every second
+        processingTimerRef.current = window.setInterval(() => {
+            setProcessingTime(prev => prev + 1);
+        }, 1000);
+    }, []);
+
+    const stopProcessingTimer = useCallback(() => {
+        if (processingTimerRef.current) {
+            window.clearInterval(processingTimerRef.current);
+            processingTimerRef.current = undefined;
+            setProcessingTime(0);
+        }
+    }, []);
 
     const captureImage = useCallback(async () => {
         if (!videoRef.current || !canvasRef.current || !isScanning || isProcessing) {
@@ -61,6 +94,8 @@ export const BarcodeScanner = () => {
         }
 
         setIsProcessing(true);
+        startProcessingTimer();
+        
         try {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
@@ -89,9 +124,10 @@ export const BarcodeScanner = () => {
             console.error('Error scanning barcode:', err);
             setError('Failed to scan barcode. Still trying...');
         } finally {
+            stopProcessingTimer();
             setIsProcessing(false);
         }
-    }, [isScanning, stopScanning, isProcessing]);
+    }, [isScanning, stopScanning, isProcessing, startProcessingTimer, stopProcessingTimer]);
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault();
@@ -127,6 +163,8 @@ export const BarcodeScanner = () => {
         }
         setError('');
         setIsProcessing(true);
+        startProcessingTimer();
+        
         try {
             const result = await scanBarcode(file);
             if (result.error) {
@@ -140,6 +178,7 @@ export const BarcodeScanner = () => {
             setError(err instanceof Error ? err.message : 'Failed to process image');
             setProduct(null);
         } finally {
+            stopProcessingTimer();
             setIsProcessing(false);
         }
     };
@@ -227,6 +266,14 @@ export const BarcodeScanner = () => {
         }
     }, [stopScanning]);
 
+    // Format time for display
+    const formatTime = (seconds: number): string => {
+        if (seconds < 60) return `${seconds}s`;
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}m ${secs}s`;
+    };
+
     return (
         <div className="flex flex-col items-center w-full max-w-2xl mx-auto p-4">
             <div className="w-full space-y-4">
@@ -264,7 +311,17 @@ export const BarcodeScanner = () => {
                             </button>
                         </div>
                         {isProcessing && (
-                            <div className="text-blue-500">Processing image...</div>
+                            <div className="flex flex-col items-center mt-4">
+                                <div className="flex items-center space-x-2">
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                                    <span className="text-blue-500">Processing image... ({formatTime(processingTime)})</span>
+                                </div>
+                                {processingTime > 15 && (
+                                    <p className="text-sm text-gray-500 mt-2">
+                                        This is taking longer than usual. The image might be large or the server could be busy.
+                                    </p>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>
@@ -295,8 +352,11 @@ export const BarcodeScanner = () => {
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                 <div className={`w-64 h-64 border-2 ${isProcessing ? 'border-yellow-400' : 'border-white'} rounded-lg transition-colors duration-200`}>
                                     {isProcessing && (
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mb-2"></div>
+                                            {processingTime > 0 && (
+                                                <span className="text-white text-shadow text-sm">{formatTime(processingTime)}</span>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -322,7 +382,17 @@ export const BarcodeScanner = () => {
 
                 {error && (
                     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-                        {error}
+                        <p>{error}</p>
+                        {error.includes('timed out') && (
+                            <div className="mt-2 text-sm">
+                                <p>Try these troubleshooting steps:</p>
+                                <ul className="list-disc pl-5 mt-1">
+                                    <li>Use a smaller or clearer image</li>
+                                    <li>Check your internet connection</li>
+                                    <li>Try again in a few moments</li>
+                                </ul>
+                            </div>
+                        )}
                     </div>
                 )}
 
