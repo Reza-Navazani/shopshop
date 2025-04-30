@@ -41,7 +41,7 @@ export default function DynamicTextBoxes() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header 
       <header className="bg-white shadow-sm fixed top-0 left-0 right-0 z-10">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between px-4 py-4">
@@ -56,7 +56,7 @@ export default function DynamicTextBoxes() {
             </div>
           </div>
         </div>
-      </header>
+      </header>*/}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 pt-24 pb-20">

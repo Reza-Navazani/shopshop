@@ -15,7 +15,7 @@ export const scanBarcode = async (imageBlob: Blob): Promise<ProductInfo> => {
         console.log('Image blob size:', imageBlob.size, 'bytes');
         console.log('Image blob type:', imageBlob.type);
 
-        const response = await fetch('http://localhost:5000/scan', {
+        const response = await fetch('http://localhost:8000/scan', {
             method: 'POST',
             body: formData,
         });

@@ -52,27 +52,29 @@ def preprocess_image(image, method='default'):
                 barcode_data = barcode.data.decode("utf-8")
                 if barcode_data:
                   barcode_number = barcode_data  # First detected text
+                  product = lookup_product(barcode_number)  # Call the lookup function
                   response_time = time.time() - start_time
                   response_text=f"Response Time: {response_time:.4f} seconds"
-                  return barcode_data    
+                  return product    
 
 
 def lookup_product(barcode_number):
     """Fetches product details using a barcode number."""
     try:
-        BARCODE_API_URL = "https://api.barcodelookup.com/v3/products?barcode="
-        KEY = "&formatted=y&key=wsogsc4e53t7o7iafcoud1od1mlhxn"
-        link = f"{BARCODE_API_URL}{barcode_number}{KEY}"
+        BARCODE_API_URL = "https://world.openfoodfacts.org/api/v0/product/"
+        KEY = "formatted=y&key=wsogsc4e53t7o7iafcoud1od1mlhxn"
+        link = f"{BARCODE_API_URL}{barcode_number}{KEY}{".json"}"
         
         response = requests.get(link)
         response.raise_for_status()
 
         product_data = response.json()
-        product_data_one = product_data.get("products", [{}])[0]
+        product_data_one = product_data
+        #product_data_one = product_data.get("products", [{}])[0]
         
         return {
-            "name": product_data_one.get("title", "Unknown Product"),
-            "description": product_data_one.get("description", "No description available"),
+            "name": product_data_one.get("product_name", "Unknown Product"),
+            "description": product_data_one.get("_keywords", "No description available"),
             "ingredients": product_data_one.get("ingredients", "No ingredients information available"),
             "barcode": barcode_number
         }
@@ -122,4 +124,4 @@ def scan_barcode():
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5002, debug=True)
+    app.run(host='0.0.0.0', port=8000, debug=True)

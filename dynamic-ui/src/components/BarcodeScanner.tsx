@@ -326,6 +326,9 @@ export const BarcodeScanner = () => {
                         )}
                         <div className="mt-4 pt-4 border-t border-gray-200">
                             <p className="text-sm text-gray-500">Barcode: {product.barcode}</p>
+                            <p className="text-sm text-gray-500">name: {product.name}</p>
+                            <p className="text-sm text-gray-500">description: {product.description}</p>
+                            <p className="text-sm text-gray-500">ingredients: {product.ingredients}</p>
                         </div>
                     </div>
                 )}
