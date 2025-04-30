@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 # Configure CORS to allow requests from your Azure Static Web App
-CORS(app, origins=["https://blue-desert-00651801e.6.azurestaticapps.net", "http://localhost:3000", "http://localhost:5173"])
+CORS(app, origins=["https://blue-desert-00651801e.6.azurestaticapps.net", 
+                   "http://localhost:3000", 
+                   "http://localhost:5173",
+                   "https://scanner-bmfhhwf0a5drhrb7.canadacentral-01.azurewebsites.net"])
 
 # Load YOLOv8 model
 model_path = os.path.join(os.path.dirname(__file__), 'best.pt')
