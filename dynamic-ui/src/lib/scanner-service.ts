@@ -82,6 +82,12 @@ async function compressImage(imageBlob: Blob, maxSizeKB: number = 1000, quality:
             currentQuality -= 0.1;
         }
         
+        // If we couldn't create a compressed blob, return the original
+        if (!compressedBlob) {
+            console.log('Could not compress image, returning original');
+            return imageBlob;
+        }
+        
         console.log(`Image compressed from ${(imageBlob.size/1024).toFixed(2)}KB to ${(compressedBlob.size/1024).toFixed(2)}KB`);
         return compressedBlob;
     } catch (err) {
