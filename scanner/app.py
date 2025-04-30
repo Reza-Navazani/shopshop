@@ -18,10 +18,15 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 # Configure CORS to allow requests from your Azure Static Web App
-CORS(app, origins=["https://blue-desert-00651801e.6.azurestaticapps.net", 
-                   "http://localhost:3000", 
-                   "http://localhost:5173",
-                   "https://scanner-bmfhhwf0a5drhrb7.canadacentral-01.azurewebsites.net"])
+CORS(app, 
+     origins=["https://blue-desert-00651801e.6.azurestaticapps.net", 
+              "http://localhost:3000", 
+              "http://localhost:5173",
+              "https://scanner-bmfhhwf0a5drhrb7.canadacentral-01.azurewebsites.net"],
+     methods=["GET", "POST", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization", "Accept", "Origin"],
+     supports_credentials=False,
+     max_age=3600)
 
 # Load YOLOv8 model
 model_path = os.path.join(os.path.dirname(__file__), 'best.pt')
@@ -90,10 +95,20 @@ def lookup_product(barcode_number):
             "barcode": barcode_number
         }
 
-@app.route('/scan', methods=['POST'])
+@app.route('/scan', methods=['POST', 'OPTIONS'])
 def scan_barcode():
     """Handle barcode scanning requests."""
+    # Handle preflight OPTIONS requests
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        return response
+        
     try:
+        # Log request headers for debugging
+        logger.debug(f"Request headers: {dict(request.headers)}")
+        logger.debug(f"Request origin: {request.headers.get('Origin', 'Not specified')}")
+        logger.debug(f"Request content type: {request.headers.get('Content-Type', 'Not specified')}")
+        
         if 'image' not in request.files:
             logger.error("No image file in request")
             return jsonify({"error": "No image file provided"}), 400
@@ -115,8 +130,18 @@ def scan_barcode():
             logger.debug(f"Converted image to numpy array, shape: {image_array.shape}")
             
             # Process the image
-            result= preprocess_image(image_array)
+            result = preprocess_image(image_array)
             logger.debug(f"Process result: {result}")
+            
+            # Ensure we're returning a valid JSON response
+            if result is None:
+                return jsonify({
+                    "name": "No Product Found",
+                    "description": "Could not detect a barcode in the image",
+                    "ingredients": "",
+                    "barcode": ""
+                })
+                
             return jsonify(result)
             
         except Exception as e:
@@ -126,6 +151,18 @@ def scan_barcode():
     except Exception as e:
         logger.error(f"Unexpected error in scan_barcode: {e}", exc_info=True)
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route('/cors-test', methods=['GET', 'OPTIONS'])
+def cors_test():
+    """Simple endpoint to test CORS configuration."""
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        return response
+        
+    return jsonify({
+        "message": "CORS is working correctly",
+        "origin": request.headers.get('Origin', 'Not specified')
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
