@@ -11,11 +11,17 @@ export const scanBarcode = async (imageBlob: Blob): Promise<ProductInfo> => {
         const formData = new FormData();
         formData.append('image', imageBlob);
 
-        console.log('Sending image to scanner server...');
+        // Determine correct scanner URL based on environment
+        const isProduction = window.location.hostname !== 'localhost';
+        const scannerUrl = isProduction 
+            ? 'https://your-scanner-app-name.azurewebsites.net/scan' // Replace with your actual Azure scanner URL
+            : 'http://localhost:8000/scan';
+
+        console.log('Sending image to scanner server at:', scannerUrl);
         console.log('Image blob size:', imageBlob.size, 'bytes');
         console.log('Image blob type:', imageBlob.type);
 
-        const response = await fetch('http://localhost:8000/scan', {
+        const response = await fetch(scannerUrl, {
             method: 'POST',
             body: formData,
         });
