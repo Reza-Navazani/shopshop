@@ -25,7 +25,10 @@ export const scanBarcode = async (imageBlob: Blob): Promise<ProductInfo> => {
             method: 'POST',
             body: formData,
             mode: 'cors',
-            credentials: 'same-origin'
+            credentials: 'omit', // Changed from 'same-origin' to 'omit'
+            headers: {
+                'Accept': 'application/json'
+            }
         });
 
         if (!response.ok) {

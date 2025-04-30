@@ -8,6 +8,11 @@
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
       "backendUri": "https://dynamic-server-bmcsdef3b9dygjcy.canadacentral-01.azurewebsites.net/api/*"
+    },
+    {
+      "route": "/scan",
+      "allowedRoles": ["anonymous"],
+      "backendUri": "https://scanner-bmfhhwf0a5drhrb7.canadacentral-01.azurewebsites.net/scan"
     }
   ],
   "globalHeaders": {
