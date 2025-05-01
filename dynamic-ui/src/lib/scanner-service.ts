@@ -3,6 +3,8 @@ export interface ProductInfo {
     description: string;
     ingredients: string;
     barcode: string;
+    image_url?: string;
+    unhealthy_ingredients?: string;
     error?: string;
 }
 
@@ -174,6 +176,8 @@ export const scanBarcode = async (imageBlob: Blob): Promise<ProductInfo> => {
                 description: result.description || '',
                 ingredients: result.ingredients || '',
                 barcode: result.barcode || '',
+                image_url: result.image_url || undefined,
+                unhealthy_ingredients: result.unhealthy_ingredients || undefined,
                 error: result.error || undefined
             };
         } catch (fetchError) {
