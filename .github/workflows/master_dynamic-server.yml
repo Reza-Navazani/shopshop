@@ -105,6 +105,24 @@ jobs:
             echo "Waiting 120 seconds to allow the SCM container to stabilize..."
             sleep 120
 
+      - name: Stop Web App Before Deployment
+        uses: azure/CLI@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            # Stop the web app before deployment to avoid conflicts
+            RESOURCE_GROUP="shop_assist_agent"
+            echo "Stopping the web app before deployment..."
+            az webapp stop --name dynamic-server --resource-group $RESOURCE_GROUP
+            
+            # Wait for the web app to fully stop
+            echo "Waiting for web app to fully stop (60 seconds)..."
+            sleep 60
+            
+            # Additional wait time to ensure SCM container is ready for deployment
+            echo "Additional wait time to ensure SCM readiness (120 seconds)..."
+            sleep 120
+
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
