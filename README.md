@@ -101,7 +101,3 @@ npm run build
 3. The backend queries the GitHub LLM and writes the response to `dynamic-ui/public/boxes.json`.
 4. The frontend polls this JSON file and updates the displayed product details in real time.
 
----
-
-## License
-MIT or your preferred license.
