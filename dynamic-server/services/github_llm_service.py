@@ -57,7 +57,7 @@ Response format must be:
             "description": "Brief product description",
             "price": "Price in local currency",
             "store_name": "Store name",
-          /   "ingredients": {
+            "ingredients": {
                 "list": ["ingredient1", "ingredient2"],  // Plain text ingredients only, no HTML
                 "unhealthy": ["ingredient1"]  // Only included when user asks about unhealthy ingredients
             },
@@ -73,7 +73,7 @@ For grocery queries:
 - Include store-specific details
 - Use realistic local prices
 - Compare similar products from different stores
-- Return a ll, ingredients as plain text without HTML formatting
+- Return all ingredients as plain text without HTML formatting
 - Mark unhealthy ingredients only when specifically asked
 - Common unhealthy ingredients include: high fructose corn syrup, artificial sweeteners, trans fats, MSG, artificial colors
 
@@ -85,7 +85,7 @@ Example response: {
             "description": "Fresh whole grain bread, 675g loaf",
             "price": "CAD 4.99",
             "store_name": "Loblaws",
-            "ingredilents ": {
+            "ingredients": {
                 "list": ["whole grain wheat flour", "water", "yeast", "salt", "sugar", "vegetable oil"],
                 "unhealthy": ["sugar"]
             },
@@ -100,6 +100,7 @@ Example response: {
                     ],
                     temperature=0.7,
                     top_p=0.9,
+                    max_tokens= 1000,
                     model=self.model
                 )
                 
@@ -147,9 +148,15 @@ Example response: {
                     logging.error("Products field is not an array")
                     return {"error": "Invalid products structure", "products": []}
                 
+                # Include metadata from the original response, or provide default
+                metadata = parsed_content.get("metadata", {"highlight_unhealthy": False})
+                
                 # Only return 'error' key if there is a real error
                 logging.info("Successfully parsed LLM response")
-                return {"products": parsed_content["products"]}
+                return {
+                    "products": parsed_content["products"],
+                    "metadata": metadata
+                }
                 
             except json.JSONDecodeError as e:
                 logging.error(f"Failed to decode JSON response: {str(e)}\nContent: {content}")

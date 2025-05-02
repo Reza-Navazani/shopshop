@@ -41,31 +41,80 @@ except Exception as e:
 def preprocess_image(image, method='default'):
     start_time = time.time()
     """Detects a barcode using YOLOv8 and extracts numbers using Pyzbar."""
+    # Check if model was loaded successfully
+    if model is None:
+        logger.error("YOLO model not loaded properly")
+        return {
+            "error": "Barcode detection model not loaded properly",
+            "barcode": ""
+        }
+        
     # Convert image to OpenCV format
-    image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+    image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
     # Run YOLOv8 for barcode detection
-    results = model(image)
-    detected_barcodes = []
+    results = model(image_cv)
+    detected_barcode = False
 
     for result in results:
         for box in result.boxes:
             x1, y1, x2, y2 = map(int, box.xyxy[0])  # Get bounding box
 
             # Crop the barcode region
-            barcode_region = image[y1:y2, x1:x2]
+            barcode_region = image_cv[y1:y2, x1:x2]
+            
+            # Save the cropped region for debugging (optional)
+            debug_path = os.path.join(os.path.dirname(__file__), 'debug_crop.jpg')
+            cv2.imwrite(debug_path, barcode_region)
+            logger.debug(f"Saved cropped barcode region to {debug_path}")
 
             # Decode barcode using Pyzbar
             barcodes = decode(barcode_region)
             for barcode in barcodes:
+                detected_barcode = True
                 barcode_data = barcode.data.decode("utf-8")
                 if barcode_data:
                   barcode_number = barcode_data  # First detected text
                   product = lookup_product(barcode_number)  # Call the lookup function
                   response_time = time.time() - start_time
                   response_text=f"Response Time: {response_time:.4f} seconds"
-                  return product    
-
+                  logger.debug(response_text)
+                  return product
+    
+    # If YOLO model didn't detect any barcode region, try direct barcode detection on the full image
+    if not detected_barcode:
+        logger.debug("YOLO didn't detect any barcode region, trying direct barcode detection")
+        
+        # Try different preprocessing techniques
+        # 1. Original image
+        barcodes = decode(image_cv)
+        
+        # 2. If no barcodes found, try grayscale conversion
+        if not barcodes:
+            gray = cv2.cvtColor(image_cv, cv2.COLOR_BGR2GRAY)
+            barcodes = decode(gray)
+            
+        # 3. If still no barcodes, try thresholding
+        if not barcodes:
+            _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            barcodes = decode(thresh)
+        
+        for barcode in barcodes:
+            barcode_data = barcode.data.decode("utf-8")
+            if barcode_data:
+                barcode_number = barcode_data
+                product = lookup_product(barcode_number)
+                response_time = time.time() - start_time
+                logger.debug(f"Direct detection successful. Response Time: {response_time:.4f} seconds")
+                return product
+    
+    # If we get here, no barcode was detected with any method
+    logger.warning("No barcode detected in the image")
+    response_time = time.time() - start_time
+    return {
+        "error": "No barcode detected in the image. Please ensure barcode is clearly visible and well-lit.",
+        "barcode": ""
+    }
 
 def lookup_product(barcode_number):
     """Fetches product details using a barcode number."""

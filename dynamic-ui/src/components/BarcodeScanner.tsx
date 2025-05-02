@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { scanBarcode, ProductInfo } from '../lib/scanner-service';
+import { useAuth } from '@/context/AuthContext';
 
 export const BarcodeScanner = () => {
     const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -14,6 +15,8 @@ export const BarcodeScanner = () => {
     const processingTimerRef = useRef<number | undefined>(undefined);
     const [dragActive, setDragActive] = useState<boolean>(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const { saveProductScan, isAuthenticated } = useAuth();
 
     // Cleanup effect
     useEffect(() => {
@@ -180,6 +183,60 @@ export const BarcodeScanner = () => {
         } finally {
             stopProcessingTimer();
             setIsProcessing(false);
+        }
+    };
+
+    // Function to save the product to user history
+    const handleSaveProduct = async () => {
+        if (!product || !product.barcode || !isAuthenticated) {
+            if (!isAuthenticated) {
+                alert("Please log in to save products to your history");
+                return;
+            }
+            return;
+        }
+        
+        setIsSaving(true);
+        try {
+            await saveProductScan({
+                barcode: product.barcode,
+                product_name: product.name || 'Unknown Product'
+            });
+            
+            // Display success message
+            alert("Product saved to your scan history");
+        } catch (err) {
+            // Improved error logging with detailed information
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            console.error('Error saving product scan:', errorMessage);
+            
+            // Check if it's an authentication error
+            if (err instanceof Error && 
+                (err.message.includes('authenticated') || 
+                 err.message.includes('token') || 
+                 err.message.includes('session'))) {
+                
+                // Handle auth error without automatic redirect
+                const confirmLogin = window.confirm(
+                    "Your session has expired. Would you like to log in again to save this product?"
+                );
+                
+                if (confirmLogin) {
+                    // Store product in sessionStorage to potentially recover after login
+                    sessionStorage.setItem('pendingScan', JSON.stringify({
+                        barcode: product.barcode,
+                        product_name: product.name || 'Unknown Product'
+                    }));
+                    
+                    // Redirect to login page
+                    window.location.href = '/?view=login';
+                }
+            } else {
+                // Display specific error message to the user
+                alert(`Failed to save product to history: ${errorMessage}`);
+            }
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -432,6 +489,16 @@ export const BarcodeScanner = () => {
                         
                         <div className="mt-4 pt-4 border-t border-gray-200">
                             <p className="text-sm text-gray-500">Barcode: {product.barcode || 'Unknown'}</p>
+                        </div>
+
+                        <div className="mt-4">
+                            <button
+                                onClick={handleSaveProduct}
+                                className={`bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                disabled={isSaving}
+                            >
+                                {isSaving ? 'Saving...' : 'Save to History'}
+                            </button>
                         </div>
                     </div>
                 )}
